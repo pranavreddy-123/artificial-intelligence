@@ -1,0 +1,175 @@
+import numpy as np #dfs
+
+
+class Node:
+    def __init__(self, state, parent, action):
+        self.state = state
+        self.parent = parent
+        self.action = action
+
+
+class StackFrontier:
+    def __init__(self):
+        self.frontier = []
+
+    def add(self, node):
+        self.frontier.append(node)
+
+    def contains_state(self, state):
+        return any((node.state[0] == state[0]).all() for node in self.frontier)
+
+    def empty(self):
+        return len(self.frontier) == 0
+
+    def remove(self):
+        if self.empty():
+            raise Exception("Empty Frontier")
+        else:
+            node = self.frontier[-1]
+            self.frontier = self.frontier[:-1]
+            return node
+
+
+class Puzzle:
+    def __init__(self, start, startIndex, goal, goalIndex):
+        self.start = [start, startIndex]
+        self.goal = [goal, goalIndex]
+        self.solution = None
+
+    def neighbors(self, state):
+        mat, (row, col) = state
+        results = []
+
+        if row > 0:  # Move up
+            mat1 = np.copy(mat)
+            mat1[row][col] = mat1[row - 1][col]
+            mat1[row - 1][col] = 0
+            results.append(('up', [mat1, (row - 1, col)]))
+        if col > 0:  # Move left
+            mat1 = np.copy(mat)
+            mat1[row][col] = mat1[row][col - 1]
+            mat1[row][col - 1] = 0
+            results.append(('left', [mat1, (row, col - 1)]))
+        if row < 2:  # Move down
+            mat1 = np.copy(mat)
+            mat1[row][col] = mat1[row + 1][col]
+            mat1[row + 1][col] = 0
+            results.append(('down', [mat1, (row + 1, col)]))
+        if col < 2:  # Move right
+            mat1 = np.copy(mat)
+            mat1[row][col] = mat1[row][col + 1]
+            mat1[row][col + 1] = 0
+            results.append(('right', [mat1, (row, col + 1)]))
+
+        return results
+
+    def print_solution(self):
+        if self.solution is not None:
+            print("Start State:\n", self.start[0], "\n")
+            print("Goal State:\n", self.goal[0], "\n")
+            print("\nStates Explored: ", self.num_explored, "\n")
+            print("Solution:\n ")
+            for action, cell in zip(self.solution[0], self.solution[1]):
+                print("Action: ", action, "\n", cell[0], "\n")
+            print("Goal Reached!!")
+        else:
+            print("No solution found.")
+
+    def solve(self):
+        self.num_explored = 0
+        start = Node(state=self.start, parent=None, action=None)
+        frontier = StackFrontier()  # Use StackFrontier for DFS
+        frontier.add(start)
+
+        self.explored = set()  # Use a set to track explored states
+
+        while True:
+            if frontier.empty():
+                raise Exception("No solution")
+
+            node = frontier.remove()
+            self.num_explored += 1
+
+            # Display the explored state and the action taken to get there
+            if node.parent is not None:
+                print(f"Exploring state after moving '{node.action}':\n{node.state[0]}\n")
+
+            if (node.state[0] == self.goal[0]).all():
+                actions = []
+                cells = []
+                while node.parent is not None:
+                    actions.append(node.action)
+                    cells.append(node.state)
+                    node = node.parent
+                actions.reverse()
+                cells.reverse()
+                self.solution = (actions, cells)
+                return
+
+            # Convert state to a tuple for set operations
+            state_tuple = tuple(map(tuple, node.state[0]))
+            if state_tuple not in self.explored:
+                self.explored.add(state_tuple)  # Add to explored set
+
+                for action, state in self.neighbors(node.state):
+                    child_state_tuple = tuple(map(tuple, state[0]))
+                    if not frontier.contains_state(state) and child_state_tuple not in self.explored:
+                        child = Node(state=state, parent=node, action=action)
+                        frontier.add(child)
+
+
+def input_puzzle():
+    print("Enter the initial state (3x3 matrix, use spaces to separate numbers):")
+    start = np.array([list(map(int, input().split())) for _ in range(3)])
+
+    print("Enter the goal state (3x3 matrix, use spaces to separate numbers):")
+    goal = np.array([list(map(int, input().split())) for _ in range(3)])
+
+    startIndex = tuple(map(int, np.argwhere(start == 0)[0]))  # Find position of 0 in start
+    goalIndex = tuple(map(int, np.argwhere(goal == 0)[0]))  # Find position of 0 in goal
+
+    return start, startIndex, goal, goalIndex
+
+
+if __name__ == "__main__":
+    start, startIndex, goal, goalIndex = input_puzzle()
+    p = Puzzle(start, startIndex, goal, goalIndex)
+    p.solve()
+    p.print_solution()
+
+
+     
+Enter the initial state (3x3 matrix, use spaces to separate numbers):
+1 2 3
+4 5 6
+7 0 8
+Enter the goal state (3x3 matrix, use spaces to separate numbers):
+1 2 3
+4 5 6
+7 8 0
+Exploring state after moving 'right':
+[[1 2 3]
+ [4 5 6]
+ [7 8 0]]
+
+Start State:
+ [[1 2 3]
+ [4 5 6]
+ [7 0 8]] 
+
+Goal State:
+ [[1 2 3]
+ [4 5 6]
+ [7 8 0]] 
+
+
+States Explored:  2 
+
+Solution:
+ 
+Action:  right 
+ [[1 2 3]
+ [4 5 6]
+ [7 8 0]] 
+
+Goal Reached!!
